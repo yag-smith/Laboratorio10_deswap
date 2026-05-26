@@ -8,18 +8,32 @@ async function getAllCharacters(): Promise<RickMortyCharacter[]> {
   let url: string | null = "https://rickandmortyapi.com/api/character";
 
   while (url) {
-    const res: Response = await fetch(url, {
-  cache: "force-cache",
-  headers: {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Accept": "application/json",
-  },
-});
-    if (!res.ok) throw new Error("Error al cargar personajes");
+    let res: Response | null = null;
+
+    // Hasta 5 reintentos si la API rate-limita (429): espera 1s, 2s, 4s, 8s, 16s
+    for (let attempt = 0; attempt < 5; attempt++) {
+      res = await fetch(url, {
+        cache: "force-cache",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "application/json",
+        },
+      });
+      if (res.status !== 429) break;
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+    }
+
+    if (!res || !res.ok) {
+      console.warn(`getAllCharacters: stop at ${url} (status ${res?.status})`);
+      break;
+    }
+
     const data: RickMortyResponse = await res.json();
+    if (!data?.results) break;
     all.push(...data.results);
-    url = data.info.next;
+    url = data.info?.next ?? null;
   }
+
   return all;
 }
 
