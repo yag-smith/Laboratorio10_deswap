@@ -36,42 +36,9 @@ async function getCharacter(id: string): Promise<RickMortyCharacter> {
 
 // SSG: pre-genera todas las rutas estáticas en build time
 export async function generateStaticParams() {
-  // En dev no pre-generamos (evita rate limits)
-  if (process.env.NODE_ENV !== "production") {
-    return [];
-  }
-
-  const all: { id: string }[] = [];
-  const MAX_PAGES = 5; // 100 personajes pre-generados; el resto va por ISR on-demand
-  let url: string | null = "https://rickandmortyapi.com/api/character";
-  let pageCount = 0;
-
-  try {
-    while (url && pageCount < MAX_PAGES) {
-      const res: Response = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "application/json",
-        },
-      });
-
-      if (!res.ok) {
-        console.warn(`generateStaticParams: skip ${url} (status ${res.status})`);
-        break;
-      }
-
-      const data: RickMortyResponse = await res.json();
-      if (!data?.results) break;
-
-      data.results.forEach((c) => all.push({ id: c.id.toString() }));
-      url = data.info?.next ?? null;
-      pageCount++;
-    }
-  } catch (error) {
-    console.error("generateStaticParams error:", error);
-  }
-
-  return all;
+  // Sin prerender en build para evitar rate limits.
+  // Las rutas se generan on-demand al visitarse y se cachean con ISR (revalidate 10 días).
+  return [];
 }
 
 export async function generateMetadata({
